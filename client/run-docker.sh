@@ -1,0 +1,1 @@
+docker build -t tagg . && docker run -it --rm --network host tagg

@@ -1,0 +1,9 @@
+version: '3'
+services:
+#  mongo:
+#    image: "mongodb:alpine"
+  server:
+    build: ./
+    tty: true
+    ports:
+      - "6668:6668"
