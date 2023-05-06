@@ -1,0 +1,18 @@
+version: '3'
+services:
+#  mongo:
+#    image: "mongodb:alpine"
+#    depends_on:
+#      - server
+  server:
+    build: ./server
+    ports:
+      - "6667:3306"
+  client_1:
+    build: ./client
+    depends_on:
+      - server
+  client_2:
+    build: ./client
+    depends_on:
+      - server
