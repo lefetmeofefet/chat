@@ -5,14 +5,12 @@ services:
 #    depends_on:
 #      - server
   server:
+    # Run with docker compose run server
     build: ./server
     ports:
       - "6667:3306"
-  client_1:
+  client:
+    # Run with docker compose run client
     build: ./client
-    depends_on:
-      - server
-  client_2:
-    build: ./client
-    depends_on:
-      - server
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
