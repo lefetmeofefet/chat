@@ -44,3 +44,4 @@ Below is an architecture diagram of the system:
 * when a message comes in while there is some text typed in the terminal, the text is overriden. This has to do with the terminal input being the same as any piece of text in the terminal, and it should be fixed by copying the typed message, displaying the incoming message, pasting the typed message below and moving the cursor to the end of the typed text.
 * when recoverable errors occur, the client disconnects instead of retrying. recoverable scenarios: session is expired (should re-login), server is unreachable (should retry / type in new server address).
 * resizing the terminal screen scrambles the layout into oblivion, because the cli depends on a constant number of characters in the terminal window. fix? think about it
+* you can't get out of rooms :(
