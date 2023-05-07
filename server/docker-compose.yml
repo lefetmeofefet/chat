@@ -1,9 +1,19 @@
 version: '3'
 services:
-#  mongo:
-#    image: "mongodb:alpine"
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_container:/data/db
   server:
     build: ./
     tty: true
+    environment:
+      - MONGO_CONNECTION_STRING=mongodb://mongo:27017/
     ports:
       - "6668:6668"
+    depends_on:
+      - mongo
+volumes:
+  mongodb_data_container:

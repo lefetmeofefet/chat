@@ -1,34 +1,34 @@
 import json
 import uuid
+from bson import ObjectId
 
 
 class Message:
-    def __init__(self, text, sender_name, time, seen_by, message_id=None):
+    def __init__(self, text, sender_name, time, seen_by, _id=None):
         self.text = text
         self.sender_name = sender_name
         self.time = time
         self.seen_by = seen_by
-        if message_id is None:
-            self.message_id = str(uuid.uuid4())
+        if _id is None:
+            self._id = ObjectId()
         else:
-            self.message_id = message_id
+            self._id = _id
 
-    def serialize(self):
-        return json.dumps({
-            "message_id": self.message_id,
+    def to_dict(self):
+        return {
+            "_id": self._id,
             "text": self.text,
             "sender_name": self.sender_name,
             "time": self.time,
             "seen_by": self.seen_by
-        }).encode()
+        }
 
     @staticmethod
-    def deserialize(message):
-        message_dict = json.loads(message)
+    def from_dict(message_dict):
         return Message(
             text=message_dict["text"],
             sender_name=message_dict["sender_name"],
             time=message_dict["time"],
             seen_by=message_dict["seen_by"],
-            message_id=message_dict["message_id"]
+            _id=message_dict["_id"]
         )
