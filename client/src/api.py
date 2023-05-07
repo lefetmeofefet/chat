@@ -54,6 +54,8 @@ class Api:
             "name": name
         })
         response = self.wait_for_message_flux()[0]
+        if "error" in response:
+            raise Exception(response["error"])
         return response["user_exists"]
 
     def register(self, name, password_hash):

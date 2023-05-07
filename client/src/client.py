@@ -6,18 +6,21 @@ from .message import Message
 
 class Client:
     def __init__(self):
-        self.messages = {}
-        self.chat_terminal = ChatTerminal()
-        (host, port) = self.chat_terminal.ask_for_server_address()
         try:
-            self.server_api = Api(host, port, self.error_from_server)
-        except ConnectionRefusedError:
-            self.chat_terminal.error_and_exit("Server is down or server address is wrong")
-        name = self.login_sequence()
-        self.name = name
-        self.room = self.chat_terminal.ask_for_room()
-        self.server_api.enter_room(self.room)
-        self.chat_terminal.notify_entered_room(self.room)
+            self.messages = {}
+            self.chat_terminal = ChatTerminal()
+            (host, port) = self.chat_terminal.ask_for_server_address()
+            try:
+                self.server_api = Api(host, port, self.error_from_server)
+            except ConnectionRefusedError:
+                self.chat_terminal.error_and_exit("Server is down or server address is wrong")
+            name = self.login_sequence()
+            self.name = name
+            self.room = self.chat_terminal.ask_for_room()
+            self.server_api.enter_room(self.room)
+            self.chat_terminal.notify_entered_room(self.room)
+        except Exception as e:
+            self.chat_terminal.error_and_exit(str(e))
 
         self.server_api.listen_to_messages(self.message_received, self.message_seen_by, self.messages_downloaded)
         self.chat_terminal.input_loop(self.send_message)

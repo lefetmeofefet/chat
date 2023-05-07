@@ -3,6 +3,9 @@ import _thread
 import uuid
 import json
 from datetime import datetime, timedelta
+
+from pymongo.errors import ServerSelectionTimeoutError
+
 from .db import db
 from .message import Message
 
@@ -88,6 +91,12 @@ class Server:
                         "type": "error",
                         "error": "Session expired! please restart chat and login again"
                     }))
+        except ServerSelectionTimeoutError as e:
+            print("Couldn't connect to mongo: " + str(e))
+            client_connection.socket.sendall(self.serialize_dict({
+                "type": "error",
+                "error": "Server error: couldn't connect to database"
+            }))
         except Exception as e:
             print("Unexpected error: " + str(e))
             client_connection.socket.sendall(self.serialize_dict({
