@@ -22,6 +22,8 @@ class Api:
     def wait_for_message_flux(self):
         try:
             requests = self.socket.recv(1048576)  # Max tcp receive size
+            if requests == b"":  # This is what a socket receives when communication ends from the other side
+                self.on_error_cb("Lost connection to server")
             requests = requests[:-1]  # Remove the null byte at the end
             return [json.loads(request) for request in requests.split(b"\0")]
         except ConnectionResetError:
