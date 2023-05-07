@@ -42,7 +42,8 @@ Below is an architecture diagram of the system:
 ![chat_architecture.drawio.png](chat_architecture.drawio.png)
 
 ## Known issues
-* when a message comes in while there is some text typed in the terminal, the text is overriden. This has to do with the terminal input being the same as any piece of text in the terminal, and it should be fixed by copying the typed message, displaying the incoming message, pasting the typed message below and moving the cursor to the end of the typed text.
-* when recoverable errors occur, the client disconnects instead of retrying. recoverable scenarios: session is expired (should re-login), server is unreachable (should retry / type in new server address).
+* input text overriding: when a message comes in while there is some text typed in the terminal, the text is overriden. This has to do with the terminal input being the same as any piece of text in the terminal, and it should be fixed by copying the typed message, displaying the incoming message, pasting the typed message below and moving the cursor to the end of the typed text.
+* error recovery: when recoverable errors occur, the client disconnects instead of retrying. recoverable scenarios: session is expired (should re-login), server is unreachable (should retry / type in new server address).
 * resizing the terminal screen scrambles the layout into oblivion, because the cli depends on a constant number of characters in the terminal window. fix? think about it
 * you can't get out of rooms :(
+* message types: in the communication between the client and the server, each message has a field "type" which tells the recipient how to process the request. (message, seen_by, register... etc.). these types are written as strings in both client and server, and this is a mess. There should be a shared enum between client and server.  
