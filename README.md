@@ -6,6 +6,7 @@ A chat.
 In server folder, execute `run-docker.sh`
 
 This runs docker compose up, which runs the db and server.
+Note that port 27017 should be free (default mongo port).
 
 ### Run the client
 In client folder, execute `run-docker.sh`
