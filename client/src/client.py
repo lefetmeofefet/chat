@@ -9,10 +9,12 @@ class Client:
         self.messages = {}
         self.chat_terminal = ChatTerminal()
         (host, port) = self.chat_terminal.ask_for_server_address()
-        self.server_api = Api(host, port)
+        try:
+            self.server_api = Api(host, port, self.error_from_server)
+        except ConnectionRefusedError:
+            self.chat_terminal.error_and_exit("Server is down or server address is wrong")
         name = self.login_sequence()
         self.name = name
-        # TODO: Check if name is taken
         self.room = self.chat_terminal.ask_for_room()
         self.server_api.enter_room(self.room)
         self.chat_terminal.notify_entered_room(self.room)
@@ -29,7 +31,11 @@ class Client:
         user_exists = self.server_api.check_if_user_exists(name)
         if user_exists:
             password = self.chat_terminal.ask_for_password(is_new_user=False)
-            self.server_api.login(name, password_hash=self.hash_password(password))
+            while True:
+                login_successful = self.server_api.login(name, password_hash=self.hash_password(password))
+                if login_successful:
+                    break
+                password = self.chat_terminal.wrong_password_prompt()
         else:
             password = self.chat_terminal.ask_for_password(is_new_user=True)
             self.server_api.register(name, password_hash=self.hash_password(password))
@@ -58,6 +64,9 @@ class Client:
 
     def send_message(self, text):
         self.server_api.send_message(text)
+
+    def error_from_server(self, error):
+        self.chat_terminal.error_and_exit(error)
 
 
 if __name__ == '__main__':

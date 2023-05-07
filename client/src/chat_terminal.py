@@ -3,7 +3,6 @@ import sys
 from rich.console import Console
 from rich.text import Text
 from .message import Message
-import time
 
 
 class ChatTerminal:
@@ -30,7 +29,6 @@ class ChatTerminal:
     @staticmethod
     def _clear_line():
         sys.stdout.write("\u001b[2K")
-        # sys.stdout.write("\u001b[K")
 
     @staticmethod
     def _save_cursor_position():
@@ -74,14 +72,18 @@ class ChatTerminal:
         self.console.print(f"seen by {seen_string}", style="grey42", justify=direction, highlight=False)
 
     def update_message_seen_by(self, message: Message, my_name):
+        """
+        Finds the message's location in the terminal and updates the "seen by" line
+        :param message:
+        :param my_name:
+        :return:
+        """
         rows_to_seen_by = 4 * (self.messages_count - message.message_index)
-
         self._save_cursor_position()
         self._move_cursor_up(rows_to_seen_by + 2)
         self.print_seen_by(message, my_name)
         self._restore_cursor_position()
         self._move_cursor_up()
-        # self._move_cursor_down(2)
         self.console.print("")
 
     def ask_for_server_address(self):
@@ -94,11 +96,18 @@ class ChatTerminal:
         self._clear_lines_above(3)
         self.console.print(f"Connected! You can log in now.")
         name = self.console.input("Please enter your nickname: ")
+        while name == "":
+            name = self.console.input("Name cannot be empty. Enter your nickname: ")
         return name
 
     def ask_for_password(self, is_new_user):
         password = self.console.input(
             f"Creating new user. Enter password: " if is_new_user else "Loggin in to existing user. Enter password: ")
+        return password
+
+    def wrong_password_prompt(self):
+        self._clear_lines_above(1)
+        password = self.console.input(f"Wrong password. Try again: ")
         return password
 
     def ask_for_room(self):
@@ -112,6 +121,11 @@ class ChatTerminal:
         self.console.print(f"You're in room {room}! You can start chatting.")
         self.console.print(f"")
 
+    def error_and_exit(self, error):
+        self.console.print(f"")
+        self.console.print(f"Error: {error}", style="red")
+        sys.exit(0)
+
     def input_loop(self, on_input_cb):
         while True:
             text = self.console.input()
@@ -119,5 +133,4 @@ class ChatTerminal:
                 text = " "  # This is so messages will not be empty, deleting the message row and fucking up the lines
             self._move_cursor_up(1)
             self._clear_line()
-            # self.console.print("sending...")
             on_input_cb(text)

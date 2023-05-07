@@ -8,6 +8,8 @@ from .message import Message
 
 HOST = "0.0.0.0"
 PORT = 6668
+SESSION_MINUTES = 60
+SESSION_EXTENSION_MINUTES = 30
 
 
 class ClientConnection:
@@ -53,38 +55,49 @@ class Server:
                         self.disconnect_client(client_connection)
                         return
                     parsed_request = json.loads(request)
-
-                    if parsed_request["type"] == "does_user_exist":
-                        self.handle_does_user_exist(parsed_request, client_connection)
-                    elif parsed_request["type"] == "register":
-                        self.handle_registration_and_login(parsed_request, client_connection)
-                    elif parsed_request["type"] == "login":
-                        self.handle_registration_and_login(parsed_request, client_connection)
-                    else:
-                        session_id = parsed_request["session_id"]
-                        if client_connection.session_id is None:
-                            user = db.get_user(client_connection.name)
-                            client_connection.session_id = user["session_id"]
-                            client_connection.session_expiration = user["session_expiration"]
-
-                        if session_id == client_connection.session_id and datetime.utcnow() < client_connection.session_expiration:
-                            # TODO: update expiration once in a while
-                            if parsed_request["type"] == "enter_room":
-                                self.handle_enter_room(parsed_request, client_connection)
-                            elif parsed_request["type"] == "message":
-                                self.handle_message(parsed_request, client_connection)
-                            elif parsed_request["type"] == "seen_message":
-                                self.handle_received_message(parsed_request, client_connection)
-                        else:
-                            print("Request rejected because of invalid session_id")
-                            client_connection.socket.sendall(self.serialize_dict({
-                                "type": "error",
-                                "error": "Unauthenticated"
-                            }))
+                    self.handle_request(client_connection, parsed_request)
 
             except ConnectionResetError as e:
                 self.disconnect_client(client_connection)
                 return
+
+    def handle_request(self, client_connection, request):
+        try:
+            if request["type"] == "does_user_exist":
+                self.handle_does_user_exist(request, client_connection)
+            elif request["type"] in ["register", "login"]:
+                self.handle_registration_and_login(request, client_connection)
+            else:
+                session_id = request["session_id"]
+                if client_connection.session_id is None:
+                    user = db.get_user(client_connection.name)
+                    client_connection.session_id = user["session_id"]
+                    client_connection.session_expiration = user["session_expiration"]
+
+                if session_id == client_connection.session_id and datetime.utcnow() < client_connection.session_expiration:
+                    self.extend_user_session_if_needed(client_connection)
+                    if request["type"] == "enter_room":
+                        self.handle_enter_room(request, client_connection)
+                    elif request["type"] == "message":
+                        self.handle_message(request, client_connection)
+                    elif request["type"] == "seen_message":
+                        self.handle_received_message(request, client_connection)
+                else:
+                    print("Request rejected because of invalid session_id")
+                    client_connection.socket.sendall(self.serialize_dict({
+                        "type": "error",
+                        "error": "Session expired! please restart chat and login again"
+                    }))
+        except Exception as e:
+            print("Unexpected error: " + str(e))
+            client_connection.socket.sendall(self.serialize_dict({
+                "type": "error",
+                "error": "Server error: " + str(e)
+            }))
+
+    def extend_user_session_if_needed(self, client_connection):
+        if client_connection.session_expiration - datetime.utcnow() <= timedelta(minutes=SESSION_EXTENSION_MINUTES):
+            db.set_user_session(client_connection.name, client_connection.session_id, datetime.utcnow() + timedelta(minutes=SESSION_MINUTES))
 
     def handle_does_user_exist(self, request, client_connection):
         user_name = request["name"]
@@ -96,27 +109,14 @@ class Server:
     def handle_registration_and_login(self, request, client_connection: ClientConnection):
         name = request["name"]
         password_hash = request["password_hash"]
-        user = db.users.find_one({"name": name})
+        user = db.get_user(name)
         session_id = str(uuid.uuid4())
-        session_expiration = datetime.utcnow() + timedelta(hours=1)
+        session_expiration = datetime.utcnow() + timedelta(minutes=SESSION_MINUTES)
         if user is None:  # Registration
-            db.users.insert_one({
-                "name": name,
-                "password_hash": password_hash,
-                "session_id": session_id,
-                "session_expiration": session_expiration
-            })
+            db.create_user(name, password_hash, session_id, session_expiration)
         elif user["password_hash"] == password_hash:  # Login
-            db.users.update_one({
-                "name": name
-            }, {
-                "$set": {
-                    "session_id": session_id,
-                    "session_expiration": session_expiration
-                }
-            })
+            db.set_user_session(name, session_id, session_expiration)
         else:  # Wrong password
-            # TODO: add handling of this in the CLI and test this
             client_connection.socket.sendall(self.serialize_dict({
                 "type": "error",
                 "error": "Wrong password!"

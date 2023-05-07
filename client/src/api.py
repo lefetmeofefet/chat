@@ -6,11 +6,11 @@ from .message import Message
 
 
 class Api:
-    def __init__(self, host, port):
+    def __init__(self, host, port, on_error_cb):
         self.session_id = None
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
-        # TODO: Error handling
+        self.on_error_cb = on_error_cb
 
     def send_request(self, request_dict):
         if self.session_id is not None:
@@ -20,9 +20,12 @@ class Api:
         self.socket.sendall(serialized_request)
 
     def wait_for_message_flux(self):
-        requests = self.socket.recv(1048576)  # Max tcp receive size
-        requests = requests[:-1]  # Remove the null byte at the end
-        return [json.loads(request) for request in requests.split(b"\0")]
+        try:
+            requests = self.socket.recv(1048576)  # Max tcp receive size
+            requests = requests[:-1]  # Remove the null byte at the end
+            return [json.loads(request) for request in requests.split(b"\0")]
+        except ConnectionResetError:
+            self.on_error_cb("Lost connection to server")
 
     def listen_to_messages(self, on_message_cb, on_message_seen_cb, on_messages_history_cb):
         _thread.start_new_thread(self._listen_to_messages_thread,
@@ -31,7 +34,6 @@ class Api:
     def _listen_to_messages_thread(self, on_message_cb, on_message_seen_cb, on_messages_history_cb):
         while True:
             for request in self.wait_for_message_flux():
-                # TODO: Error handling
                 if request["type"] == "message":
                     on_message_cb(Message.from_dict(request["message"]))
                 elif request["type"] == "seen_message":
@@ -43,6 +45,8 @@ class Api:
                     on_messages_history_cb(
                         [Message.from_dict(message_dict) for message_dict in request["messages"]]
                     )
+                elif request["type"] == "error":
+                    self.on_error_cb(request["error"])
 
     def check_if_user_exists(self, name):
         self.send_request({
@@ -68,7 +72,10 @@ class Api:
             "password_hash": password_hash
         })
         response = self.wait_for_message_flux()[0]
+        if "error" in response:
+            return False
         self.session_id = response["session_id"]
+        return True
 
     def send_message(self, text):
         self.send_request({

@@ -32,8 +32,26 @@ class Database:
         user = self.users.find_one({"name": name})
         return user is not None
 
+    def create_user(self, name, password_hash, session_id, session_expiration):
+        self.users.insert_one({
+            "name": name,
+            "password_hash": password_hash,
+            "session_id": session_id,
+            "session_expiration": session_expiration
+        })
+
     def get_user(self, name):
         return self.users.find_one({"name": name})
+
+    def set_user_session(self, name, session_id, session_expiration):
+        self.users.update_one({
+            "name": name
+        }, {
+            "$set": {
+                "session_id": session_id,
+                "session_expiration": session_expiration
+            }
+        })
 
 
 db = Database()
